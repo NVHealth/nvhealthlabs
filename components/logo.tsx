@@ -11,7 +11,7 @@ interface LogoProps {
 
 export function Logo({ className = "", textClassName = "", iconSize = 40, showText = true, href = "/" }: LogoProps) {
   const logoContent = (
-    <div className={`flex items-center gap-3 ${className}`}>
+    <div className={`flex items-center gap-2 ${className}`}>
       <Image
         src="/images/nvicon.png"
         alt="NVHealth Labs"
