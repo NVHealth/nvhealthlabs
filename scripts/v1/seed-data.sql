@@ -1,13 +1,13 @@
--- Seed data for NVHealth Labs
+-- Seed data for NVHealth Labs (PostgreSQL)
 
 -- Insert test categories
 INSERT INTO test_categories (id, name, description, icon, sort_order) VALUES
-('cat-1', 'Blood Tests', 'Complete blood count, lipid profile, and more', 'droplet', 1),
-('cat-2', 'Diabetes', 'Blood sugar, HbA1c, and diabetes monitoring', 'activity', 2),
-('cat-3', 'Heart Health', 'Cardiac markers, cholesterol, and heart function', 'heart', 3),
-('cat-4', 'Liver Function', 'Liver enzymes and function tests', 'shield', 4),
-('cat-5', 'Kidney Function', 'Creatinine, BUN, and kidney health', 'droplets', 5),
-('cat-6', 'Thyroid', 'TSH, T3, T4 and thyroid function', 'zap', 6);
+(uuid_generate_v4(), 'Blood Tests', 'Complete blood count, lipid profile, and more', 'droplet', 1),
+(uuid_generate_v4(), 'Diabetes', 'Blood sugar, HbA1c, and diabetes monitoring', 'activity', 2),
+(uuid_generate_v4(), 'Heart Health', 'Cardiac markers, cholesterol, and heart function', 'heart', 3),
+(uuid_generate_v4(), 'Liver Function', 'Liver enzymes and function tests', 'shield', 4),
+(uuid_generate_v4(), 'Kidney Function', 'Creatinine, BUN, and kidney health', 'droplets', 5),
+(uuid_generate_v4(), 'Thyroid', 'TSH, T3, T4 and thyroid function', 'zap', 6);
 
 -- Insert sample tests
 INSERT INTO tests (id, name, description, category_id, preparation_instructions, sample_type, reporting_time, is_popular) VALUES

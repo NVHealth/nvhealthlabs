@@ -11,11 +11,12 @@ interface TwoFactorVerificationProps {
   email: string
   phone: string
   userId: string
+  firstName?: string
   onSuccess: () => void
 }
 
-export function TwoFactorVerification({ email, phone, userId, onSuccess }: TwoFactorVerificationProps) {
-  const [currentMethod, setCurrentMethod] = useState<"email" | "sms">("email")
+export function TwoFactorVerification({ email, phone, userId, firstName = "User", onSuccess }: TwoFactorVerificationProps) {
+  const [currentMethod, setCurrentMethod] = useState<"email" | "sms" | null>(null)
   const [verificationCode, setVerificationCode] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSending, setIsSending] = useState(false)
@@ -26,30 +27,54 @@ export function TwoFactorVerification({ email, phone, userId, onSuccess }: TwoFa
     setIsSending(true)
     setError("")
     setSuccess("")
+    setCurrentMethod(method)
 
     try {
-      const response = await fetch("/api/auth/send-verification", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userId,
-          method,
-          email,
-          phone,
-        }),
-      })
+      let response;
+
+      if (method === "email") {
+        // Use send-email API for email verification
+        response = await fetch("/api/auth/send-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            firstName,
+            userId,
+          }),
+        })
+      } else if (method === "sms") {
+        // Use send-verification API for SMS verification
+        response = await fetch("/api/auth/send-verification", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId,
+            method,
+            email,
+            phone,
+          }),
+        })
+      }
+      if (!response) {
+        setError("Invalid verification method")
+        return
+      }
 
       const data = await response.json()
 
       if (response.ok) {
         setSuccess(`Verification code sent to your ${method === "email" ? "email" : "phone"}`)
-        setCurrentMethod(method)
+        // setCurrentMethod(method)
       } else {
         setError(data.error || "Failed to send verification code")
       }
     } catch (error) {
+      setCurrentMethod(null)
       setError("An error occurred. Please try again.")
     } finally {
       setIsSending(false)
@@ -59,6 +84,11 @@ export function TwoFactorVerification({ email, phone, userId, onSuccess }: TwoFa
   const verifyCode = async () => {
     if (!verificationCode.trim()) {
       setError("Please enter the verification code")
+      return
+    }
+
+    if (!currentMethod) {
+      setError("Please select a verification method first")
       return
     }
 
@@ -93,12 +123,37 @@ export function TwoFactorVerification({ email, phone, userId, onSuccess }: TwoFa
   }
 
   const handleResendCode = () => {
-    setVerificationCode("")
-    sendVerificationCode(currentMethod)
+    if (currentMethod) {
+      setVerificationCode("")
+      sendVerificationCode(currentMethod)
+    }
   }
 
   return (
     <div className="space-y-6">
+      {/* User Details Section */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+            <Shield className="w-6 h-6 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="font-medium text-blue-900">Verifying Account for</h3>
+            <p className="text-blue-700 font-semibold">{firstName}</p>
+            <div className="text-sm text-blue-600 space-y-1 mt-1">
+              <div className="flex items-center space-x-2">
+                <Mail className="w-4 h-4" />
+                <span>{email}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Smartphone className="w-4 h-4" />
+                <span>{phone}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {error && (
         <Alert className="border-red-200 bg-red-50">
           <AlertDescription className="text-red-700">{error}</AlertDescription>
@@ -112,47 +167,62 @@ export function TwoFactorVerification({ email, phone, userId, onSuccess }: TwoFa
       )}
 
       {/* Verification Method Selection */}
-      <div className="space-y-4">
-        <Label className="text-primary-700 font-medium">Choose verification method:</Label>
+      {!success && (
+        <div className="space-y-4">
+          <div>
+            <Label className="text-primary-700 font-medium">Choose verification method:</Label>
+            <p className="text-sm text-gray-600 mt-1">Select how you'd like to receive your verification code</p>
+          </div>
 
-        <div className="grid gap-3">
-          <Button
-            type="button"
-            variant={currentMethod === "email" ? "default" : "outline"}
-            className={`justify-start h-auto p-4 ${
-              currentMethod === "email"
+          <div className="grid gap-3">
+            <Button
+              type="button"
+              variant={currentMethod === "email" ? "default" : "outline"}
+              className={`justify-start h-auto p-4 ${currentMethod === "email"
                 ? "bg-primary-600 hover:bg-primary-700 text-white"
                 : "border-primary-200 text-primary-600 hover:bg-primary-50"
-            }`}
-            onClick={() => sendVerificationCode("email")}
-            disabled={isSending}
-          >
-            <Mail className="w-5 h-5 mr-3" />
-            <div className="text-left">
-              <div className="font-medium">Email Verification</div>
-              <div className="text-sm opacity-80">{email}</div>
-            </div>
-          </Button>
+                }`}
+              onClick={() => sendVerificationCode("email")}
+              disabled={isSending || !!success}
+            >
+              {isSending && currentMethod === "email" ? (
+                <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
+              ) : (
+                <Mail className="w-5 h-5 mr-3" />
+              )}
+              <div className="text-left">
+                <div className="font-medium">
+                  {isSending && currentMethod === "email" ? "Sending..." : "Email Verification"}
+                </div>
+                <div className="text-sm opacity-80">{email}</div>
+              </div>
+            </Button>
 
-          <Button
-            type="button"
-            variant={currentMethod === "sms" ? "default" : "outline"}
-            className={`justify-start h-auto p-4 ${
-              currentMethod === "sms"
+            <Button
+              type="button"
+              variant={currentMethod === "sms" ? "default" : "outline"}
+              className={`justify-start h-auto p-4 ${currentMethod === "sms"
                 ? "bg-primary-600 hover:bg-primary-700 text-white"
                 : "border-primary-200 text-primary-600 hover:bg-primary-50"
-            }`}
-            onClick={() => sendVerificationCode("sms")}
-            disabled={isSending}
-          >
-            <Smartphone className="w-5 h-5 mr-3" />
-            <div className="text-left">
-              <div className="font-medium">SMS Verification</div>
-              <div className="text-sm opacity-80">{phone}</div>
-            </div>
-          </Button>
+                }`}
+              onClick={() => sendVerificationCode("sms")}
+              disabled={isSending || !!success}
+            >
+              {isSending && currentMethod === "sms" ? (
+                <RefreshCw className="w-5 h-5 mr-3 animate-spin" />
+              ) : (
+                <Smartphone className="w-5 h-5 mr-3" />
+              )}
+              <div className="text-left">
+                <div className="font-medium">
+                  {isSending && currentMethod === "sms" ? "Sending..." : "SMS Verification"}
+                </div>
+                <div className="text-sm opacity-80">{phone}</div>
+              </div>
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Code Input */}
       {success && (

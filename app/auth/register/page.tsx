@@ -117,6 +117,7 @@ export default function RegisterPage() {
                 email={verificationData.email}
                 phone={verificationData.phone}
                 userId={verificationData.userId}
+                firstName={formData.firstName}
                 onSuccess={handleVerificationSuccess}
               />
             </CardContent>

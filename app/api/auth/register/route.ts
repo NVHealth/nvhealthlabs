@@ -1,55 +1,68 @@
 import { type NextRequest, NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
-import { VerificationDB } from "@/lib/verification-db"
+import { UserService } from "@/lib/user-service"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, firstName, lastName, phone, dateOfBirth, gender } = await request.json()
+    const { email, password, firstName, lastName, phone } = await request.json()
 
     // Validate required fields
     if (!email || !password || !firstName || !lastName) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400 })
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 })
+    }
+
     // Check if user already exists
-    const existingUser = await VerificationDB.getUserByEmail(email)
+    const existingUser = await UserService.getUserByEmail(email)
     if (existingUser) {
       return NextResponse.json({ error: "User already exists with this email" }, { status: 400 })
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
-
     // Create user in database
-    const newUser = await VerificationDB.createUser({
+    const newUser = await UserService.createUser({
       email,
       phone,
       first_name: firstName,
       last_name: lastName,
-      // Note: In a real implementation, you'd store the hashed password
-      // password: hashedPassword,
-      // date_of_birth: dateOfBirth,
-      // gender,
+      password,
     })
 
-    // Return user data for verification step
+    // Return success response (don't include sensitive data)
     return NextResponse.json({
       success: true,
-      message: "User registered successfully. Please verify your account.",
+      message: "Registration successful! Please check your email to verify your account.",
+      userId: newUser.id.toString(),
       user: {
         id: newUser.id,
         email: newUser.email,
         phone: newUser.phone,
         firstName: newUser.first_name,
         lastName: newUser.last_name,
-        emailVerified: newUser.email_verified,
-        phoneVerified: newUser.phone_verified,
+        isVerified: newUser.is_verified,
         isActive: newUser.is_active,
+        twoFactorEnabled: newUser.two_factor_enabled,
       },
       requiresVerification: true,
     })
   } catch (error) {
     console.error("Registration error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    
+    // Handle specific database errors
+    if (error instanceof Error) {
+      if (error.message.includes('duplicate key')) {
+        return NextResponse.json({ error: "User already exists with this email" }, { status: 400 })
+      }
+    }
+    
+    return NextResponse.json({ error: "Registration failed. Please try again." }, { status: 500 })
   }
 }
