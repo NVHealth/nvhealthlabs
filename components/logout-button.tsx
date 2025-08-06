@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { LogOut } from "lucide-react"
-import { AuthService } from "@/lib/auth"
+import { useAuth } from "./auth-provider"
 
 interface LogoutButtonProps {
   variant?: "default" | "outline" | "ghost"
@@ -17,9 +17,10 @@ export function LogoutButton({
   showIcon = true,
   className = ""
 }: LogoutButtonProps) {
+  const { logout } = useAuth()
+
   const handleLogout = () => {
-    // You can add logout API call here if needed
-    AuthService.logout()
+    logout()
   }
 
   return (

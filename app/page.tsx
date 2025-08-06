@@ -4,12 +4,15 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Logo } from "@/components/logo"
+import { LogoutButton } from "@/components/logout-button"
+import { useAuth } from "@/components/auth-provider"
 import { Microscope, Shield, Clock, Phone, Mail, Users, Heart, Activity, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { user, isAuthenticated } = useAuth()
 
   return (
     <div className="min-h-screen bg-white">
@@ -41,20 +44,31 @@ export default function HomePage() {
             <div className="flex items-center space-x-2 sm:space-x-4">
               {/* Desktop Auth Buttons */}
               <div className="hidden sm:flex items-center space-x-2 sm:space-x-4">
-                <Link href="/auth/login">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-primary-600 text-primary-600 hover:bg-primary-50 bg-transparent text-xs sm:text-sm"
-                  >
-                    Login
-                  </Button>
-                </Link>
-                <Link href="/auth/register">
-                  <Button size="sm" className="bg-primary-600 hover:bg-primary-700 text-white text-xs sm:text-sm">
-                    Register
-                  </Button>
-                </Link>
+                {isAuthenticated ? (
+                  <>
+                    <span className="text-sm text-primary-600 font-medium">
+                      Welcome, {user?.firstName}!
+                    </span>
+                    <LogoutButton variant="outline" size="sm" />
+                  </>
+                ) : (
+                  <>
+                    <Link href="/auth/login">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-primary-600 text-primary-600 hover:bg-primary-50 bg-transparent text-xs sm:text-sm"
+                      >
+                        Login
+                      </Button>
+                    </Link>
+                    <Link href="/auth/register">
+                      <Button size="sm" className="bg-primary-600 hover:bg-primary-700 text-white text-xs sm:text-sm">
+                        Register
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
 
               {/* Mobile Menu Button */}
@@ -125,19 +139,34 @@ export default function HomePage() {
 
                 {/* Mobile Auth Buttons */}
                 <div className="flex flex-col space-y-3 pt-4 pb-2 sm:hidden animate-in slide-in-from-bottom-2 duration-300">
-                  <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
-                    <Button
-                      variant="outline"
-                      className="border-primary-600 text-primary-600 hover:bg-primary-50 bg-transparent w-full transition-all duration-200 hover:scale-105"
-                    >
-                      Login
-                    </Button>
-                  </Link>
-                  <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="bg-primary-600 hover:bg-primary-700 text-white w-full transition-all duration-200 hover:scale-105">
-                      Register
-                    </Button>
-                  </Link>
+                  {isAuthenticated ? (
+                    <>
+                      <div className="text-center text-primary-600 font-medium py-2">
+                        Welcome, {user?.firstName}!
+                      </div>
+                      <LogoutButton 
+                        variant="outline" 
+                        className="border-primary-600 text-primary-600 hover:bg-primary-50 bg-transparent w-full transition-all duration-200 hover:scale-105"
+                        size="default"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                        <Button
+                          variant="outline"
+                          className="border-primary-600 text-primary-600 hover:bg-primary-50 bg-transparent w-full transition-all duration-200 hover:scale-105"
+                        >
+                          Login
+                        </Button>
+                      </Link>
+                      <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
+                        <Button className="bg-primary-600 hover:bg-primary-700 text-white w-full transition-all duration-200 hover:scale-105">
+                          Register
+                        </Button>
+                      </Link>
+                    </>
+                  )}
                 </div>
               </nav>
             </div>

@@ -1,62 +1,42 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { AuthService } from "@/lib/auth"
+import React from 'react'
+import { useAuth } from './auth-provider'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requiredRoles?: string[]
-  redirectTo?: string
+  allowedRoles?: string[]
+  fallback?: React.ReactNode
 }
 
 export function ProtectedRoute({ 
   children, 
-  requiredRoles = [], 
-  redirectTo = "/auth/login" 
+  allowedRoles, 
+  fallback 
 }: ProtectedRouteProps) {
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAuthorized, setIsAuthorized] = useState(false)
-  const router = useRouter()
-
-  useEffect(() => {
-    const checkAuth = () => {
-      // Check if user is authenticated
-      if (!AuthService.isAuthenticated()) {
-        router.push(redirectTo)
-        return
-      }
-
-      // Check if user has required roles (if specified)
-      if (requiredRoles.length > 0) {
-        if (!AuthService.hasAnyRole(requiredRoles)) {
-          // Redirect to appropriate dashboard based on user's actual role
-          const user = AuthService.getUser()
-          if (user) {
-            const dashboardUrl = AuthService.getDashboardUrl(user.role)
-            router.push(dashboardUrl)
-            return
-          }
-        }
-      }
-
-      setIsAuthorized(true)
-      setIsLoading(false)
-    }
-
-    checkAuth()
-  }, [router, requiredRoles, redirectTo])
+  const { user, isAuthenticated, isLoading } = useAuth()
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary-600"></div>
       </div>
     )
   }
 
-  if (!isAuthorized) {
-    return null
+  if (!isAuthenticated) {
+    return fallback || null
+  }
+
+  if (allowedRoles && user && !allowedRoles.includes(user.role)) {
+    return (
+      <div className="min-h-screen bg-secondary-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-primary-700 mb-4">Access Denied</h1>
+          <p className="text-primary-500">You don't have permission to access this page.</p>
+        </div>
+      </div>
+    )
   }
 
   return <>{children}</>

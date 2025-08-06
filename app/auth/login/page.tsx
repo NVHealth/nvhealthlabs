@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,8 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Logo } from "@/components/logo"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { AuthService } from "@/lib/auth"
+import { useAuth } from "@/components/auth-provider"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -22,7 +21,7 @@ export default function LoginPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const router = useRouter()
+  const { login } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,15 +40,8 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Store authentication token and user data
-        if (data.token) {
-          localStorage.setItem('authToken', data.token)
-          localStorage.setItem('user', JSON.stringify(data.user))
-        }
-
-        // Use AuthService to get the correct dashboard URL
-        const dashboardUrl = AuthService.getDashboardUrl(data.user.role)
-        router.push(dashboardUrl)
+        // Use the auth provider's login function
+        login(data.user, data.token)
       } else {
         setError(data.error || "Login failed")
       }

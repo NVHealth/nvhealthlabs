@@ -19,6 +19,13 @@ export class AuthService {
     return null
   }
 
+  // Set token
+  static setToken(token: string): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('authToken', token)
+    }
+  }
+
   // Get stored user
   static getUser(): AuthUser | null {
     if (typeof window !== 'undefined') {
@@ -28,16 +35,54 @@ export class AuthService {
     return null
   }
 
+  // Set user data
+  static setUser(user: AuthUser): void {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('user', JSON.stringify(user))
+    }
+  }
+
+  // Check if token is valid (basic check for JWT structure and expiry)
+  static isValidToken(token: string): boolean {
+    if (!token) return false
+    
+    try {
+      // Basic JWT structure check (header.payload.signature)
+      const parts = token.split('.')
+      if (parts.length !== 3) return false
+      
+      // Decode payload to check expiry
+      const payload = JSON.parse(atob(parts[1]))
+      const now = Math.floor(Date.now() / 1000)
+      
+      // Check if token is expired
+      if (payload.exp && payload.exp < now) return false
+      
+      return true
+    } catch (error) {
+      return false
+    }
+  }
+
+  // Clear all auth data
+  static clearAuth(): void {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('user')
+    }
+  }
+
   // Check if user is authenticated
   static isAuthenticated(): boolean {
-    return !!this.getToken() && !!this.getUser()
+    const token = this.getToken()
+    const user = this.getUser()
+    return !!(token && user && this.isValidToken(token))
   }
 
   // Logout user
   static logout(): void {
+    this.clearAuth()
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('user')
       window.location.href = '/auth/login'
     }
   }
