@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       if (!authenticatedUser) {
         return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
       }
-      
+
       user = authenticatedUser
       role = authenticatedUser.role || "patient"
     }
