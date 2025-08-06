@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +12,7 @@ import { Logo } from "@/components/logo"
 import { Eye, EyeOff, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { AuthService } from "@/lib/auth"
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -40,20 +41,15 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Redirect based on user role
-        switch (data.user.role) {
-          case "customer":
-            router.push("/nvcustomer/dashboard")
-            break
-          case "admin":
-            router.push("/admin/dashboard")
-            break
-          case "center":
-            router.push("/center/dashboard")
-            break
-          default:
-            router.push("/")
+        // Store authentication token and user data
+        if (data.token) {
+          localStorage.setItem('authToken', data.token)
+          localStorage.setItem('user', JSON.stringify(data.user))
         }
+
+        // Use AuthService to get the correct dashboard URL
+        const dashboardUrl = AuthService.getDashboardUrl(data.user.role)
+        router.push(dashboardUrl)
       } else {
         setError(data.error || "Login failed")
       }
@@ -162,6 +158,16 @@ export default function LoginPage() {
                   Sign up
                 </Link>
               </p>
+            </div>
+
+            {/* Demo accounts for testing */}
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm font-medium text-gray-700 mb-2">Demo Accounts:</p>
+              <div className="text-xs text-gray-600 space-y-1">
+                <p><strong>Customer:</strong> customer@test.com / demo123</p>
+                <p><strong>Admin:</strong> admin@nvhealth.com / admin123</p>
+                <p><strong>Center:</strong> center@test.com / center123</p>
+              </div>
             </div>
           </CardContent>
         </Card>
