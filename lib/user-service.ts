@@ -8,6 +8,7 @@ export interface User {
   first_name: string
   last_name: string
   password_hash: string
+  role: string
   is_verified: boolean
   is_active: boolean
   two_factor_enabled: boolean
@@ -35,6 +36,14 @@ export interface VerificationCode {
   attempts: number
   last_attempt_at?: Date
   created_at: Date
+}
+
+export interface AuditLogData {
+  user_id?: string
+  action: string
+  details?: Record<string, any>
+  ip_address?: string
+  user_agent?: string
 }
 
 export class UserService {
@@ -67,6 +76,17 @@ export class UserService {
       )
       
       await client.query('COMMIT')
+      
+      // Log user creation
+      await this.createAuditLog({
+        user_id: userResult.rows[0].id,
+        action: 'user_created',
+        details: {
+          email: userData.email,
+          role: userResult.rows[0].role
+        }
+      })
+      
       return userResult.rows[0]
       
     } catch (error) {
@@ -87,6 +107,27 @@ export class UserService {
   static async getUserById(id: string): Promise<User | null> {
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [id])
     return result.rows[0] || null
+  }
+
+  // Create audit log entry
+  static async createAuditLog(auditData: AuditLogData): Promise<void> {
+    try {
+      const details = {
+        ...auditData.details,
+        ip_address: auditData.ip_address,
+        user_agent: auditData.user_agent,
+        timestamp: new Date().toISOString()
+      }
+
+      await pool.query(
+        `INSERT INTO user_audit_logs (user_id, action, details) 
+         VALUES ($1, $2, $3)`,
+        [auditData.user_id || null, auditData.action, JSON.stringify(details)]
+      )
+    } catch (error) {
+      console.error('Failed to create audit log:', error)
+      // Don't throw error to prevent breaking main functionality
+    }
   }
   
     // Verify email with OTP code
@@ -195,16 +236,36 @@ export class UserService {
   }
   
   // Authenticate user
-  static async authenticateUser(email: string, password: string): Promise<User | null> {
+  static async authenticateUser(email: string, password: string, auditDetails?: { ip_address?: string, user_agent?: string }): Promise<User | null> {
     const user = await this.getUserByEmail(email)
     
     if (!user || !user.is_active) {
+      // Log failed login attempt
+      await this.createAuditLog({
+        user_id: user?.id,
+        action: 'login_failure',
+        details: {
+          email,
+          reason: !user ? 'user_not_found' : 'account_inactive'
+        },
+        ...auditDetails
+      })
       return null
     }
     
     const isPasswordValid = await bcrypt.compare(password, user.password_hash)
     
     if (!isPasswordValid) {
+      // Log failed login attempt
+      await this.createAuditLog({
+        user_id: user.id,
+        action: 'login_failure',
+        details: {
+          email,
+          reason: 'invalid_password'
+        },
+        ...auditDetails
+      })
       return null
     }
     
@@ -213,6 +274,17 @@ export class UserService {
       `UPDATE users SET last_login = NOW(), updated_at = NOW() WHERE id = $1`,
       [user.id]
     )
+    
+    // Log successful login
+    await this.createAuditLog({
+      user_id: user.id,
+      action: 'login_success',
+      details: {
+        email,
+        role: user.role
+      },
+      ...auditDetails
+    })
     
     return user
   }

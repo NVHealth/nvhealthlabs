@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
     // Return success response (don't include sensitive data)
     return NextResponse.json({
       success: true,
-      message: "Registration successful! Please check your email to verify your account.",
+      message: "Registration successful!.",
       userId: newUser.id.toString(),
       user: {
         id: newUser.id,

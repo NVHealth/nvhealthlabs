@@ -86,3 +86,37 @@ CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users 
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
+
+
+-- Audit log table for security and compliance (HIPAA)
+CREATE TABLE IF NOT EXISTS user_audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID, -- Nullable: for pre-login events like failed login
+    action VARCHAR(50) NOT NULL CHECK (
+        action IN (
+            'user_created',
+            'login_attempt',
+            'login_success',
+            'login_failure',
+            'logout',
+            'password_reset_request',
+            'password_reset_complete',
+            'profile_updated',
+            '2fa_enabled',
+            '2fa_disabled',
+            'account_locked',
+            'account_unlocked',
+            'data_access_patient',
+            'session_expired'
+        )
+    ),
+    details JSONB, -- Structured data: IP, user agent, metadata
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for performance and compliance queries
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON user_audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON user_audit_logs(action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON user_audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_action ON user_audit_logs(user_id, action);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at_desc ON user_audit_logs(created_at DESC);

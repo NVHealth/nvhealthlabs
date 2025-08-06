@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
-import { VerificationDB } from "@/lib/verification-db"
+import { UserService } from "@/lib/user-service"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
@@ -11,6 +11,11 @@ export async function POST(request: NextRequest) {
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
+
+    // Get audit details from request
+    const ip_address = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+    const user_agent = request.headers.get('user-agent') || 'unknown'
+    const auditDetails = { ip_address, user_agent }
 
     // Demo login logic
     let user: any = null
@@ -23,8 +28,7 @@ export async function POST(request: NextRequest) {
         first_name: "Demo",
         last_name: "Customer",
         role: "nvcustomer",
-        email_verified: true,
-        phone_verified: true,
+        is_verified: true,
         is_active: true,
       }
       role = "nvcustomer"
@@ -35,8 +39,7 @@ export async function POST(request: NextRequest) {
         first_name: "Platform",
         last_name: "Admin",
         role: "platform_admin",
-        email_verified: true,
-        phone_verified: true,
+        is_verified: true,
         is_active: true,
       }
       role = "platform_admin"
@@ -49,19 +52,19 @@ export async function POST(request: NextRequest) {
         role: "center_admin",
         center_id: "center-1",
         center_name: "HealthFirst Diagnostics",
-        email_verified: true,
-        phone_verified: true,
+        is_verified: true,
         is_active: true,
       }
       role = "center_admin"
     } else {
-      // Try to get user from database for real accounts
-      const dbUser = await VerificationDB.getUserByEmail(email)
-      if (!dbUser || !dbUser.is_active) {
+      // Try to authenticate user from database
+      const authenticatedUser = await UserService.authenticateUser(email, password, auditDetails)
+      if (!authenticatedUser) {
         return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
       }
-      user = dbUser
-      role = email.includes("admin") ? "admin" : "nvcustomer"
+      
+      user = authenticatedUser
+      role = authenticatedUser.role || "patient"
     }
 
     if (!user) {
@@ -93,9 +96,9 @@ export async function POST(request: NextRequest) {
         role: user.role || role,
         center_id: user.center_id,
         center_name: user.center_name,
-        emailVerified: user.email_verified,
-        phoneVerified: user.phone_verified,
+        isVerified: user.is_verified,
         isActive: user.is_active,
+        twoFactorEnabled: user.two_factor_enabled,
       },
     })
   } catch (error) {
