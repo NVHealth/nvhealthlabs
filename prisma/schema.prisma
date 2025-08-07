@@ -1,0 +1,84 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum Role {
+  patient
+  platform_admin
+  center_admin
+}
+
+model User {
+  id            String   @id @default(uuid()) @db.Uuid
+  email         String   @unique @db.VarChar(255)
+  phone         String?  @unique @db.VarChar(20)
+  passwordHash  String   @db.VarChar(255)
+
+  firstName     String   @db.VarChar(100)
+  lastName      String   @db.VarChar(100)
+  dateOfBirth   DateTime? @db.Date
+  gender        Gender?
+
+  role          Role     @default(patient)
+
+  isVerified    Boolean  @default(false)
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now())
+  lastLogin     DateTime?
+  
+  verificationCodes VerificationCode[]
+
+  @@map("users")
+
+  @@index([email], name: "idx_users_email")
+  @@index([phone], name: "idx_users_phone")
+  @@index([role], name: "idx_users_role")
+  @@index([isActive], name: "idx_users_is_active")
+  @@index([isVerified], name: "idx_users_is_verified")
+  @@index([createdAt], name: "idx_users_created_at")
+  @@index([updatedAt], name: "idx_users_updated_at")
+}
+
+model VerificationCode {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  channel       String   @db.VarChar(10) // 'email' or 'sms'
+  purpose       String   @db.VarChar(20) // 'signup', 'login', 'password_reset'
+  codeHash      String   @db.VarChar(255)
+  expiresAt     DateTime
+  used          Boolean  @default(false)
+  attempts      Int      @default(0)
+  lastAttemptAt DateTime?
+  createdAt     DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("verification_codes")
+  
+  @@index([userId], name: "idx_verification_codes_user_id")
+  @@index([channel], name: "idx_verification_codes_channel")
+  @@index([purpose], name: "idx_verification_codes_purpose")
+  @@index([expiresAt], name: "idx_verification_codes_expires_at")
+}
+

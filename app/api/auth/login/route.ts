@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       role = "center_admin"
     } else {
       // Try to authenticate user from database
-      const authenticatedUser = await UserService.authenticateUser(email, password, auditDetails)
+      const authenticatedUser = await UserService.authenticateUser(email, password)
       if (!authenticatedUser) {
         return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
       }
@@ -91,14 +91,13 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         phone: user.phone,
-        firstName: user.first_name,
-        lastName: user.last_name,
+        firstName: user.firstName || user.first_name,
+        lastName: user.lastName || user.last_name,
         role: user.role || role,
         center_id: user.center_id,
         center_name: user.center_name,
-        isVerified: user.is_verified,
-        isActive: user.is_active,
-        twoFactorEnabled: user.two_factor_enabled,
+        isVerified: user.isVerified || user.is_verified,
+        isActive: user.isActive || user.is_active,
       },
     })
   } catch (error) {

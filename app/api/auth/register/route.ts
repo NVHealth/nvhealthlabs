@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
     const newUser = await UserService.createUser({
       email,
       phone,
-      first_name: firstName,
-      last_name: lastName,
+      firstName,
+      lastName,
       password,
     })
 
@@ -45,11 +45,11 @@ export async function POST(request: NextRequest) {
         id: newUser.id,
         email: newUser.email,
         phone: newUser.phone,
-        firstName: newUser.first_name,
-        lastName: newUser.last_name,
-        isVerified: newUser.is_verified,
-        isActive: newUser.is_active,
-        twoFactorEnabled: newUser.two_factor_enabled,
+        firstName: newUser.firstName,
+        lastName: newUser.lastName,
+        isVerified: newUser.isVerified,
+        isActive: newUser.isActive,
+        role: newUser.role,
       },
       requiresVerification: true,
     })

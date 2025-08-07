@@ -18,11 +18,11 @@ export async function POST(request: NextRequest) {
     let verified = false
 
     if (method === "email") {
-      verified = await UserService.verifyEmailWithOTP(user.id, code)
+      verified = await UserService.verifyOTPCode(user.email, code)
     } else if (method === "sms") {
       // For SMS verification, you would implement similar logic
       // For now, using the existing verification logic
-      verified = await UserService.verifyEmailWithOTP(user.id, code)
+      verified = await UserService.verifyOTPCode(user.email, code)
     }
 
     if (verified) {
