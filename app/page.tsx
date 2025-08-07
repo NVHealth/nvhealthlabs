@@ -40,6 +40,7 @@ export default function HomePage() {
                 Contact
               </Link>
             </nav>
+            
 
             <div className="flex items-center space-x-2 sm:space-x-4">
               {/* Desktop Auth Buttons */}
