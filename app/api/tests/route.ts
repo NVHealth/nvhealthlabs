@@ -1,4 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest } from 'next/server'
+import { ResponseHelper } from '../utils/errorHandler'
 
 // Mock data - replace with database queries
 const mockTests = [
@@ -106,13 +107,15 @@ export async function GET(request: NextRequest) {
       filteredTests = filteredTests.filter((test) => test.is_popular)
     }
 
-    return NextResponse.json({
-      success: true,
-      tests: filteredTests,
-      total: filteredTests.length,
-    })
+    return ResponseHelper.success(
+      {
+        tests: filteredTests,
+        total: filteredTests.length,
+      },
+      'Tests retrieved successfully'
+    )
   } catch (error) {
     console.error("Tests API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return ResponseHelper.error('Failed to retrieve tests')
   }
 }

@@ -330,4 +330,30 @@ export class UserService {
             return false
         }
     }
+
+    // Update last login timestamp
+    static async updateLastLogin(userId: string): Promise<boolean> {
+        try {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { 
+                    lastLogin: new Date(),
+                    updatedAt: new Date()
+                }
+            })
+
+            // Log last login update
+            await this.createAuditLog({
+                userId,
+                action: 'last_login_updated',
+                details: { timestamp: new Date().toISOString() }
+            })
+
+            return true
+
+        } catch (error) {
+            console.error('Update last login error:', error)
+            return false
+        }
+    }
 }

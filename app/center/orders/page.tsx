@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { useAuth, withAuth } from "@/components/auth-provider"
 import {
   Search,
   Calendar,
@@ -56,8 +57,8 @@ interface Booking {
   updated_at: string
 }
 
-export default function CenterOrders() {
-  const [user, setUser] = useState<any | null>(null)
+function CenterOrders() {
+  const { user, logout } = useAuth()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -74,12 +75,6 @@ export default function CenterOrders() {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Get user from localStorage
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      setUser(JSON.parse(userData))
-    }
-
     fetchBookings()
   }, [])
 
@@ -332,9 +327,7 @@ export default function CenterOrders() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem("user")
-    localStorage.removeItem("token")
-    window.location.href = "/"
+    logout()
   }
 
   if (loading) {
@@ -389,7 +382,7 @@ export default function CenterOrders() {
                   <User className="w-4 h-4 text-primary" />
                 </div>
                 <span className="text-sm font-medium">
-                  {user?.first_name} {user?.last_name}
+                  {user?.firstName} {user?.lastName}
                 </span>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
@@ -724,3 +717,6 @@ export default function CenterOrders() {
     </div>
   )
 }
+
+// Export with role-based authentication protection
+export default withAuth(CenterOrders, ['center_admin', 'platform_admin'])

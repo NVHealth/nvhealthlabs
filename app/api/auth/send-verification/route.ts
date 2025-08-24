@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate verification code using UserService
-    const code = await UserService.generateOTPCode(userId, type as 'email' | 'phone')
+    const code = await UserService.generateOTPCode(userId, type as 'email' | 'sms')
 
     // Send verification code via email if type is email
     if (type === 'email') {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <h2>Email Verification</h2>
-                <p>Hello ${user.first_name},</p>
+                <p>Hello ${user.firstName},</p>
                 <p>Please use the following verification code to complete your email verification:</p>
                 <div style="background-color: #f4f4f4; padding: 20px; text-align: center; margin: 20px 0;">
                   <h1 style="color: #333; letter-spacing: 3px; margin: 0;">${code}</h1>

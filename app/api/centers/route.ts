@@ -1,4 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest } from 'next/server'
+import { ResponseHelper } from '../utils/errorHandler'
 
 const mockCenters = [
   {
@@ -84,20 +85,24 @@ export async function GET(request: NextRequest) {
     let filteredCenters = [...mockCenters]
 
     if (city) {
-      filteredCenters = filteredCenters.filter((center) => center.city.toLowerCase().includes(city.toLowerCase()))
+      filteredCenters = filteredCenters.filter((center) => 
+        center.city.toLowerCase().includes(city.toLowerCase())
+      )
     }
 
     if (homeCollection === "true") {
       filteredCenters = filteredCenters.filter((center) => center.home_collection)
     }
 
-    return NextResponse.json({
-      success: true,
-      centers: filteredCenters,
-      total: filteredCenters.length,
-    })
+    return ResponseHelper.success(
+      {
+        centers: filteredCenters,
+        total: filteredCenters.length,
+      },
+      'Centers retrieved successfully'
+    )
   } catch (error) {
     console.error("Centers API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return ResponseHelper.error('Failed to retrieve centers')
   }
 }

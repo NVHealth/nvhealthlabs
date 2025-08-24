@@ -21,7 +21,7 @@ const bookings = [
     payment_status: "paid",
     external_booking_id: null,
     integration_status: "pending",
-    last_sync_at: null,
+    last_sync_at: null as string | null,
     customer_notes: "",
     special_instructions: "",
     collection_address: null,
@@ -32,7 +32,12 @@ const bookings = [
   },
 ]
 
-const statusLogs = []
+const statusLogs: Array<{
+  booking_id: string;
+  status: string;
+  message: string;
+  timestamp: string;
+}> = []
 
 // Helper function to authenticate API requests
 function authenticateRequest(request: NextRequest) {
@@ -88,15 +93,10 @@ export async function POST(request: NextRequest) {
 
     // Log status change
     const statusLog = {
-      id: (statusLogs.length + 1).toString(),
       booking_id: booking.id,
-      old_status: oldStatus,
-      new_status: data.status,
-      updated_by: "integration",
-      update_source: "api",
-      notes: data.notes || "",
-      additional_data: data.additional_data || {},
-      created_at: new Date().toISOString(),
+      status: data.status,
+      message: data.notes || `Status updated to ${data.status}`,
+      timestamp: new Date().toISOString(),
     }
 
     statusLogs.push(statusLog)

@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Logo } from "@/components/logo"
+import { useAuth, withAuth } from "@/components/auth-provider"
 import {
   Search,
   Calendar,
@@ -64,8 +65,8 @@ interface TestResult {
   uploaded_at?: string
 }
 
-export default function CenterDashboard() {
-  const [user, setUser] = useState<any | null>(null)
+function CenterDashboard() {
+  const { user, logout } = useAuth()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -82,12 +83,6 @@ export default function CenterDashboard() {
   const { toast } = useToast()
 
   useEffect(() => {
-    // Get user from localStorage
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      setUser(JSON.parse(userData))
-    }
-
     fetchBookings()
   }, [])
 
@@ -289,9 +284,7 @@ export default function CenterDashboard() {
   }
 
   const handleLogout = () => {
-    localStorage.removeItem("user")
-    localStorage.removeItem("token")
-    window.location.href = "/"
+    logout()
   }
 
   const initializeResultUpload = (booking: Booking) => {
@@ -357,7 +350,7 @@ export default function CenterDashboard() {
                   <User className="w-4 h-4 text-accent" />
                 </div>
                 <span className="text-sm font-medium text-primary-800">
-                  {user?.first_name} {user?.last_name}
+                  {user?.firstName} {user?.lastName}
                 </span>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
@@ -711,3 +704,6 @@ export default function CenterDashboard() {
     </div>
   )
 }
+
+// Export with role-based authentication protection
+export default withAuth(CenterDashboard, ['center_admin', 'platform_admin'])
