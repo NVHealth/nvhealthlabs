@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate and store OTP
-    const otpCode = await UserService.generateOTPCode(user.id, 'email')
+  const otpCode = await UserService.generateOTPCode(user.id, 'email', 'signup')
     console.log('Generated OTP:', otpCode);
     
     // Send OTP email

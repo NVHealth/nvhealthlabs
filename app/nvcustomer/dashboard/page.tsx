@@ -153,7 +153,7 @@ export default function PatientDashboard() {
                   <User className="w-4 h-4 text-accent" />
                 </div>
                 <span className="text-sm font-medium text-primary-800">
-                  {user?.first_name} {user?.last_name}
+                  {(user?.firstName || user?.first_name) || ''} {(user?.lastName || user?.last_name) || ''}
                 </span>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
@@ -167,7 +167,7 @@ export default function PatientDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-primary-800 mb-2">Welcome back, {user?.first_name}!</h1>
+          <h1 className="text-3xl font-bold text-primary-800 mb-2">Welcome back, {(user?.firstName || user?.first_name) || 'Patient'}!</h1>
           <p className="text-primary-600">Manage your health tests and track your wellness journey</p>
         </div>
 

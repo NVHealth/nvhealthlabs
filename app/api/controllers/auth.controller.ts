@@ -9,6 +9,7 @@ import {
 import { 
   loginSchema,
   registerSchema,
+  registerSchemaWithTransform,
   changePasswordSchema,
   validateSchema
 } from '../schemas/user.schema'
@@ -23,7 +24,7 @@ export class AuthController {
     const body = await request.json()
     
     // Validate input
-    const userData = validateSchema(registerSchema, body)
+  const userData = validateSchema(registerSchemaWithTransform, body)
     
     // Ensure role is set
     const userDataWithRole = {

@@ -3,7 +3,7 @@ import { UserService } from "@/lib/user-service"
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId, code, method } = await request.json()
+  const { userId, code, method } = await request.json()
 
     if (!userId || !code || !method) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
@@ -18,11 +18,9 @@ export async function POST(request: NextRequest) {
     let verified = false
 
     if (method === "email") {
-      verified = await UserService.verifyOTPCode(user.email, code)
+      verified = await UserService.verifyOTPCode(user.email, code, 'signup', 'email')
     } else if (method === "sms") {
-      // For SMS verification, you would implement similar logic
-      // For now, using the existing verification logic
-      verified = await UserService.verifyOTPCode(user.email, code)
+      verified = await UserService.verifyOTPCode(user.email, code, 'signup', 'sms')
     }
 
     if (verified) {

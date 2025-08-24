@@ -24,6 +24,7 @@ const PUBLIC_ROUTES = [
   '/',
   '/auth/login',
   '/auth/register',
+  '/auth/forgot-password',
   '/about',
   '/contact',
   '/centers',
@@ -68,7 +69,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         if (token && userData && AuthService.isValidToken(token)) {
           setUser(userData)
-          
+
           // If user is on login/register page and authenticated, redirect to dashboard
           if (pathname === '/auth/login' || pathname === '/auth/register') {
             const redirectPath = getRoleRedirectPath(userData.role)
@@ -79,7 +80,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           // Clear invalid auth data
           AuthService.clearAuth()
           setUser(null)
-          
+
           // If on protected route, redirect to login
           if (!isPublicRoute(pathname)) {
             router.replace('/auth/login')
@@ -90,7 +91,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.error('Auth initialization error:', error)
         AuthService.clearAuth()
         setUser(null)
-        
+
         if (!isPublicRoute(pathname)) {
           router.replace('/auth/login')
         }
@@ -124,7 +125,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     AuthService.setToken(token)
     AuthService.setUser(userData)
     setUser(userData)
-    
+
     // Redirect to appropriate dashboard based on role
     const redirectPath = getRoleRedirectPath(userData.role)
     router.replace(redirectPath)

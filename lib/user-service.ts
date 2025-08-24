@@ -263,22 +263,38 @@ export class UserService {
         }
     }
 
-    // Generate OTP code (temporary implementation until we have verification_codes table)
-    static async generateOTPCode(userId: string, channel: 'email' | 'sms' = 'email'): Promise<string> {
+    // Generate OTP code and store hashed copy
+    static async generateOTPCode(
+        userId: string,
+        channel: 'email' | 'sms' = 'email',
+        purpose: 'signup' | 'login' | 'password_reset' = 'signup'
+    ): Promise<string> {
         try {
-            // Generate 6-digit OTP code
             const otpCode = Math.floor(100000 + Math.random() * 900000).toString()
-            
-            // For now, just log the OTP (in production, you'd store this in a verification_codes table)
-            console.log(`Generated OTP for user ${userId}: ${otpCode}`)
-            
-            // Log OTP generation
+            const codeHash = await bcrypt.hash(otpCode, 10)
+
+            const expiresAt = new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
+
+            await prisma.verificationCode.create({
+                data: {
+                    userId,
+                    channel,
+                    purpose,
+                    codeHash,
+                    expiresAt,
+                    used: false,
+                    attempts: 0,
+                    createdAt: new Date(),
+                }
+            })
+
             await this.createAuditLog({
                 userId,
                 action: 'otp_generated',
-                details: { channel }
+                details: { channel, purpose }
             })
 
+            // Return plain code to caller (do not log in production)
             return otpCode
 
         } catch (error) {
@@ -287,43 +303,75 @@ export class UserService {
         }
     }
 
-    // Verify OTP code (temporary implementation)
-    static async verifyOTPCode(email: string, code: string): Promise<boolean> {
+    // Verify OTP code using stored verification_codes
+    static async verifyOTPCode(
+        email: string,
+        code: string,
+        purpose: 'signup' | 'login' | 'password_reset' = 'signup',
+        channel?: 'email' | 'sms'
+    ): Promise<boolean> {
         try {
-            // First, get the user by email
             const user = await this.getUserByEmail(email)
             if (!user) {
                 console.log(`Verification failed: User not found for email ${email}`)
                 return false
             }
 
-            // This is a temporary implementation
-            // In a real application, you'd check against stored codes in verification_codes table
-            console.log(`Verifying OTP for user ${email}: ${code}`)
-            
-            // For demo purposes, accept any 6-digit code
-            if (code.length === 6 && /^\d+$/.test(code)) {
-                // Log successful verification
-                await this.createAuditLog({
-                    userId: user.id,
-                    action: 'otp_verified',
-                    details: { code: 'verified' }
-                })
-                
-                // Activate the user
-                await this.verifyUser(user.id)
-                
-                return true
-            }
-
-            // Log failed verification
-            await this.createAuditLog({
+            // Get most recent, un-used, un-expired code for this user/purpose/channel
+            const where: any = {
                 userId: user.id,
-                action: 'otp_verification_failed',
-                details: { reason: 'invalid_code' }
+                used: false,
+                purpose,
+                expiresAt: { gt: new Date() },
+            }
+            if (channel) where.channel = channel
+
+            const vc = await prisma.verificationCode.findFirst({
+                where,
+                orderBy: { createdAt: 'desc' }
             })
 
-            return false
+            if (!vc) {
+                await this.createAuditLog({
+                    userId: user.id,
+                    action: 'otp_verification_failed',
+                    details: { reason: 'no_active_code', purpose, channel }
+                })
+                return false
+            }
+
+            const isMatch = await bcrypt.compare(code, vc.codeHash)
+            if (!isMatch) {
+                await prisma.verificationCode.update({
+                    where: { id: vc.id },
+                    data: { attempts: vc.attempts + 1, lastAttemptAt: new Date() }
+                })
+                await this.createAuditLog({
+                    userId: user.id,
+                    action: 'otp_verification_failed',
+                    details: { reason: 'mismatch', purpose, channel }
+                })
+                return false
+            }
+
+            // Mark code as used
+            await prisma.verificationCode.update({
+                where: { id: vc.id },
+                data: { used: true, lastAttemptAt: new Date() }
+            })
+
+            // For signup purpose, verify/activate the user
+            if (purpose === 'signup') {
+                await this.verifyUser(user.id)
+            }
+
+            await this.createAuditLog({
+                userId: user.id,
+                action: 'otp_verified',
+                details: { purpose, channel }
+            })
+
+            return true
 
         } catch (error) {
             console.error('OTP verification error:', error)

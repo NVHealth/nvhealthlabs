@@ -12,6 +12,8 @@ import { Logo } from "@/components/logo"
 import { TwoFactorVerification } from "@/components/two-factor-verification"
 import { Eye, EyeOff, ArrowLeft, CheckCircle } from "lucide-react"
 import Link from "next/link"
+import { countries, flagEmoji } from "@/lib/countries"
+import { AsYouType, parsePhoneNumberFromString } from 'libphonenumber-js'
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
@@ -21,22 +23,36 @@ export default function RegisterPage() {
     firstName: "",
     lastName: "",
     email: "",
-    phone: "",
     password: "",
     confirmPassword: "",
   })
+  const [countryIso2, setCountryIso2] = useState<string>("US")
+  // country can be changed anytime
+  const [phoneLocal, setPhoneLocal] = useState<string>("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [phoneError, setPhoneError] = useState("")
   const [verificationData, setVerificationData] = useState<{
     email: string
     phone: string
     userId: string
   } | null>(null)
 
+  // Compose E.164 using selected country's dial code and the local number input
+  const normalizePhone = (): string => {
+    const selected = countries.find(c => c.iso2 === countryIso2)
+    const dial = selected ? selected.dialCode : '1'
+    const localDigits = (phoneLocal || "").replace(/\D/g, "")
+    const candidate = `+${dial}${localDigits}`
+    const parsed = parsePhoneNumberFromString(candidate)
+    return parsed?.isValid() ? parsed.number : candidate
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
+    setPhoneError("")
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
@@ -46,6 +62,14 @@ export default function RegisterPage() {
     }
 
     try {
+      const normalizedPhone = normalizePhone()
+      // Client-side robust check
+      const parsed = parsePhoneNumberFromString(normalizedPhone)
+      if (!parsed || !parsed.isValid()) {
+        setIsLoading(false)
+        setPhoneError("Enter a valid international phone number")
+        return
+      }
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
@@ -55,7 +79,8 @@ export default function RegisterPage() {
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
-          phone: formData.phone,
+          phone: normalizedPhone,
+          countryIso2,
           password: formData.password,
           confirmPassword: formData.confirmPassword,
         }),
@@ -66,7 +91,7 @@ export default function RegisterPage() {
       if (response.ok) {
         setVerificationData({
           email: formData.email,
-          phone: formData.phone,
+          phone: normalizedPhone,
           userId: data.data?.user?.id ?? data.userId,
         })
         setCurrentStep("verify")
@@ -85,6 +110,34 @@ export default function RegisterPage() {
       ...prev,
       [e.target.name]: e.target.value,
     }))
+  }
+
+  const handleLocalPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setPhoneError("")
+    // Use AsYouType formatting for the selected country, then store digits only for local state
+    const typer = new AsYouType(countryIso2 as any)
+    const formatted = typer.input(val)
+    setPhoneLocal(formatted.replace(/[^\d]/g, ""))
+  }
+
+  // When country changes, if phone starts with +, replace country code to selected; else, keep user input digits
+  const handleCountryChange = (iso2: string) => {
+    setCountryIso2(iso2)
+    // Re-validate the composed phone against new country
+    if (phoneLocal) {
+      const selected = countries.find(c => c.iso2 === iso2)
+      const dial = selected ? selected.dialCode : '1'
+      const candidate = `+${dial}${phoneLocal}`
+      const parsed = parsePhoneNumberFromString(candidate)
+      if (!parsed || !parsed.isValid()) {
+        setPhoneError('Number may not be valid for selected country')
+      } else {
+        setPhoneError("")
+        // Normalize local to parsed national number (drops/keeps leading zeros properly)
+        setPhoneLocal(parsed.nationalNumber)
+      }
+    }
   }
 
   const handleVerificationSuccess = () => {
@@ -244,16 +297,44 @@ export default function RegisterPage() {
                 <Label htmlFor="phone" className="text-primary-700">
                   Phone Number
                 </Label>
-                <Input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  required
-                  className="border-primary-200 focus:border-primary-500"
-                  placeholder="+91 9876543210"
-                />
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="col-span-1">
+                    <Label htmlFor="country" className="sr-only">Country</Label>
+                    <select
+                      id="country"
+                      className="w-full h-10 border rounded-md px-2 border-primary-200 focus:border-primary-500 bg-white"
+                      value={countryIso2}
+                      onChange={(e) => handleCountryChange(e.target.value)}
+                    >
+                      {countries.map((c) => (
+                        <option key={c.iso2} value={c.iso2}>
+                          {flagEmoji(c.iso2)} +{c.dialCode} {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 pr-2 flex items-center pointer-events-none text-primary-600">
+                        +{countries.find(c => c.iso2 === countryIso2)?.dialCode}
+                      </div>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        inputMode="numeric"
+                        value={phoneLocal}
+                        onChange={handleLocalPhoneChange}
+                        required
+                        className="border-primary-200 focus:border-primary-500 pl-16"
+                        placeholder="Local number"
+                      />
+                    </div>
+                    {phoneError && (
+                      <p className="text-xs text-red-600 mt-1">{phoneError}</p>
+                    )}
+                  </div>
+                </div>
+                {/* <p className="text-xs text-primary-500">We’ll format to international (E.164) using your selected country.</p> */}
               </div>
 
               <div className="space-y-2">

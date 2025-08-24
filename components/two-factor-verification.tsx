@@ -54,9 +54,8 @@ export function TwoFactorVerification({ email, phone, userId, firstName = "User"
           },
           body: JSON.stringify({
             userId,
-            method,
-            email,
-            phone,
+            type: "sms",
+            contact: phone, // expect E.164 phone
           }),
         })
       }

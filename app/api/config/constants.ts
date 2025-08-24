@@ -102,5 +102,6 @@ export const VALIDATION = {
   NAME_MIN_LENGTH: 2,
   NAME_MAX_LENGTH: 50,
   EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-  PHONE_REGEX: /^\+?[\d\s\-\(\)]{10,}$/,
+  // E.164: up to 15 digits, leading + optional in our validation
+  PHONE_REGEX: /^\+?[1-9]\d{7,14}$/,
 } as const

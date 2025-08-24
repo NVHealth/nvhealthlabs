@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { UserService } from "@/lib/user-service"
+import { validateAndFormatPhone } from "@/lib/phone"
 import nodemailer from 'nodemailer'
 
 export async function POST(request: NextRequest) {
@@ -21,8 +22,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
+    // If SMS, validate phone number
+    if (type === 'sms') {
+      const phoneValidation = validateAndFormatPhone(contact)
+      if (!phoneValidation.isValid || !phoneValidation.e164) {
+        return NextResponse.json({ error: "Invalid phone number" }, { status: 400 })
+      }
+    }
+
     // Generate verification code using UserService
-    const code = await UserService.generateOTPCode(userId, type as 'email' | 'sms')
+  const code = await UserService.generateOTPCode(userId, type as 'email' | 'sms', 'signup')
 
     // Send verification code via email if type is email
     if (type === 'email') {

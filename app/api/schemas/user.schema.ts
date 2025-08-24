@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { VALIDATION, UserRole } from '../config/constants'
 import { ValidationError } from '../utils/errorHandler'
+import { validateAndFormatPhone } from '@/lib/phone'
 
 // Base user schema
 export const userSchema = z.object({
@@ -21,7 +22,8 @@ export const userSchema = z.object({
     .regex(/^[a-zA-Z\s'-]+$/, "Last name can only contain letters, spaces, apostrophes, and hyphens"),
   phone: z
     .string()
-    .regex(VALIDATION.PHONE_REGEX, 'Invalid phone number format')
+    .min(1, 'Phone number is required')
+    .refine((val) => VALIDATION.PHONE_REGEX.test(val) || !!validateAndFormatPhone(val).isValid, 'Invalid phone number format')
     .optional(),
   role: z.nativeEnum(UserRole).default(UserRole.PATIENT),
   gender: z.enum(['male', 'female', 'other']).optional(),
@@ -47,9 +49,22 @@ export const registerSchema = userSchema.omit({
     .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, 
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   confirmPassword: z.string(),
+  // Optional country ISO2 for better phone validation; not persisted
+  countryIso2: z.string().regex(/^[A-Z]{2}$/).optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',
   path: ['confirmPassword'],
+})
+
+// Normalize phone to E.164 after validation where provided
+export const registerSchemaWithTransform = registerSchema.transform((data) => {
+  if (data.phone) {
+    const parsed = validateAndFormatPhone(data.phone, data.countryIso2)
+    if (parsed.isValid && parsed.e164) {
+      return { ...data, phone: parsed.e164 }
+    }
+  }
+  return data
 })
 
 // User login schema
