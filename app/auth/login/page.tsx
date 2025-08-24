@@ -40,8 +40,15 @@ export default function LoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        // Use the auth provider's login function
-        login(data.user, data.token)
+        // API responses are wrapped by ResponseHelper -> { success, message, data }
+        const user = data?.data?.user ?? data?.user
+        const token = data?.data?.token ?? data?.token
+        if (!user || !token) {
+          setError("Unexpected response from server. Please try again.")
+        } else {
+          // Use the auth provider's login function
+          login(user, token)
+        }
       } else {
         setError(data.error || "Login failed")
       }

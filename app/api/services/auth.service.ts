@@ -43,47 +43,58 @@ export class AuthService {
    * Register a new user
    */
   static async register(userData: RegisterInput): Promise<AuthResponse> {
-    // Check if user already exists in demo users
+    // Disallow demo emails
     const existingDemoUser = this.getDemoUser(userData.email)
     if (existingDemoUser) {
+      throw new ConflictError(MESSAGES.ERROR.USER_EXISTS)
+    }
+
+    // Check if user exists in DB
+    const exists = await prisma.user.findUnique({ where: { email: userData.email } })
+    if (exists) {
       throw new ConflictError(MESSAGES.ERROR.USER_EXISTS)
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(userData.password, env.BCRYPT_SALT_ROUNDS)
 
-    // For demo purposes, we'll use mock user creation
-    // In production, replace with actual Prisma user creation
-    const user = await this.createMockUser({
-      ...userData,
-      password: hashedPassword
+    // Create real user in DB
+  const dbUser = await prisma.user.create({
+      data: {
+        email: userData.email,
+        phone: userData.phone,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        passwordHash: hashedPassword,
+        role: userData.role || UserRole.PATIENT,
+        isVerified: false,
+        isActive: false, // activated after verification
+      },
     })
 
     // Generate tokens
     const token = JWTUtils.generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      centerId: user.centerId
+      userId: dbUser.id,
+      email: dbUser.email,
+      role: dbUser.role,
     })
 
     const refreshToken = JWTUtils.generateRefreshToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      centerId: user.centerId
+      userId: dbUser.id,
+      email: dbUser.email,
+      role: dbUser.role,
     })
 
     return {
       user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role,
-        isVerified: user.isVerified,
-        isActive: user.isActive,
-        centerId: user.centerId
+        id: dbUser.id,
+        email: dbUser.email,
+        firstName: dbUser.firstName,
+        lastName: dbUser.lastName,
+        role: dbUser.role,
+        isVerified: dbUser.isVerified,
+        isActive: dbUser.isActive,
+  // no centerId for standard users
       },
       token,
       refreshToken
@@ -126,8 +137,40 @@ export class AuthService {
       }
     }
 
-    // For non-demo users, throw error if no database is configured
-    throw new UnauthorizedError(MESSAGES.ERROR.INVALID_CREDENTIALS)
+    // DB-backed users
+    const user = await prisma.user.findUnique({ where: { email } })
+    if (!user) {
+      throw new UnauthorizedError(MESSAGES.ERROR.INVALID_CREDENTIALS)
+    }
+
+    const isValid = await bcrypt.compare(password, user.passwordHash)
+    if (!isValid) {
+      throw new UnauthorizedError(MESSAGES.ERROR.INVALID_CREDENTIALS)
+    }
+
+    if (!user.isActive) {
+      throw new UnauthorizedError(MESSAGES.ERROR.ACCOUNT_INACTIVE)
+    }
+
+    const token = JWTUtils.generateToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    })
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role,
+        isVerified: user.isVerified,
+        isActive: user.isActive,
+        centerId: (user as any).centerId,
+      },
+      token,
+    }
   }
 
   /**
@@ -184,7 +227,7 @@ export class AuthService {
     // Update password in database
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword }
+      data: { passwordHash: hashedPassword }
     })
   }
 

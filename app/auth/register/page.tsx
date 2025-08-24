@@ -57,6 +57,7 @@ export default function RegisterPage() {
           email: formData.email,
           phone: formData.phone,
           password: formData.password,
+          confirmPassword: formData.confirmPassword,
         }),
       })
 
@@ -66,7 +67,7 @@ export default function RegisterPage() {
         setVerificationData({
           email: formData.email,
           phone: formData.phone,
-          userId: data.userId,
+          userId: data.data?.user?.id ?? data.userId,
         })
         setCurrentStep("verify")
       } else {

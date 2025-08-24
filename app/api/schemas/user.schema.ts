@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { VALIDATION, UserRole } from '../config/constants'
+import { ValidationError } from '../utils/errorHandler'
 
 // Base user schema
 export const userSchema = z.object({
@@ -12,12 +13,12 @@ export const userSchema = z.object({
     .string()
     .min(VALIDATION.NAME_MIN_LENGTH, `First name must be at least ${VALIDATION.NAME_MIN_LENGTH} characters`)
     .max(VALIDATION.NAME_MAX_LENGTH, `First name must be at most ${VALIDATION.NAME_MAX_LENGTH} characters`)
-    .regex(/^[a-zA-Z\s]+$/, 'First name can only contain letters and spaces'),
+    .regex(/^[a-zA-Z\s'-]+$/, "First name can only contain letters, spaces, apostrophes, and hyphens"),
   lastName: z
     .string()
     .min(VALIDATION.NAME_MIN_LENGTH, `Last name must be at least ${VALIDATION.NAME_MIN_LENGTH} characters`)
     .max(VALIDATION.NAME_MAX_LENGTH, `Last name must be at most ${VALIDATION.NAME_MAX_LENGTH} characters`)
-    .regex(/^[a-zA-Z\s]+$/, 'Last name can only contain letters and spaces'),
+    .regex(/^[a-zA-Z\s'-]+$/, "Last name can only contain letters, spaces, apostrophes, and hyphens"),
   phone: z
     .string()
     .regex(VALIDATION.PHONE_REGEX, 'Invalid phone number format')
@@ -43,7 +44,7 @@ export const registerSchema = userSchema.omit({
   password: z
     .string()
     .min(VALIDATION.PASSWORD_MIN_LENGTH, `Password must be at least ${VALIDATION.PASSWORD_MIN_LENGTH} characters`)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, 
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
@@ -81,7 +82,7 @@ export const resetPasswordSchema = z.object({
   newPassword: z
     .string()
     .min(VALIDATION.PASSWORD_MIN_LENGTH, `Password must be at least ${VALIDATION.PASSWORD_MIN_LENGTH} characters`)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, 
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
@@ -95,7 +96,7 @@ export const changePasswordSchema = z.object({
   newPassword: z
     .string()
     .min(VALIDATION.PASSWORD_MIN_LENGTH, `Password must be at least ${VALIDATION.PASSWORD_MIN_LENGTH} characters`)
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/, 
       'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
@@ -141,7 +142,8 @@ export function validateSchema<T>(schema: z.ZodSchema<T>, data: unknown): T {
       const errorMessage = error.errors
         .map(err => `${err.path.join('.')}: ${err.message}`)
         .join(', ')
-      throw new Error(`Validation failed: ${errorMessage}`)
+  // Throw a typed validation error so the global handler returns 400
+  throw new ValidationError(errorMessage)
     }
     throw error
   }
